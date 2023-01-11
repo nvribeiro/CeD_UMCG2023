@@ -1,4 +1,4 @@
-# Repository for CeD scRNA-seq and scATAC-seq data analysis project.
+# Repository for CeD scRNA-seq and scATAC-seq data analysis project
 
 **Project:** Identification of potential biomarkers and regulatory elements using single-cell RNA-seq and ATAC-seq in coeliac disease
 
