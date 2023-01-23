@@ -1,0 +1,7 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+data_preprocessing/data/
+data_preprocessing/demuxlet/
+data_preprocessing/outputs/
