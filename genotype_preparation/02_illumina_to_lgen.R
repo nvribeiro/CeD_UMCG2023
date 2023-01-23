@@ -24,5 +24,5 @@ lgen<-lgen[!duplicated(lgen),]
 lgen<-lgen[complete.cases(lgen),]
 lgen<-filter(lgen, Allele1...Forward != "-" & Allele2...Forward != "-")
 
-write.table(map, file = paste(args$outputdir,"/CeDNN_NR03_allsamples.map",sep=""), sep = "\t", col.names = F, row.names = F, quote = F)
-write.table(lgen, file = paste(args$outputdir,"/CeDNN_NR03_allsamples.lgen",sep=""), sep = "\t", col.names = F, row.names = F, quote = F)
+write.table(map, file = paste(args$outputdir,"/mets.map",sep=""), sep = "\t", col.names = F, row.names = F, quote = F)
+write.table(lgen, file = paste(args$outputdir,"/mets.lgen",sep=""), sep = "\t", col.names = F, row.names = F, quote = F)

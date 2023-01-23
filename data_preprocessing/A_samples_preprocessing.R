@@ -1,15 +1,11 @@
 # Preprocessing of A samples - doing some QC, checking for technical/batch effects
-setwd('./Desktop/IMIM/Groningen/RPII/Projects/NR03_scRNAseq_main_analysis/data_preprocessing/')
 
 # Color-blind friendly palette with black:
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00")
 
 # Load libraries
 library(Seurat)
-library(ggplot2)
 library(tidyverse)
-library(gridExtra)
-library(HDF5Array)
 library(SeuratDisk)
 
 # Get data location
@@ -256,3 +252,120 @@ dev.off()
 # How many cells I have left?
 A_filtered <- readRDS('./outputs/SeuratObj_A_filtered.rds')
 A_merged <- readRDS('./outputs/SeuratObj_A_merged.rds')
+
+##############################################################################
+## Preprocessing A batch without lane A7 -------------------------------------
+
+# Get data location
+dirs <- str_subset(list.dirs(path = 'data', recursive = F, full.names = T), 'A')
+
+# Create Seurat objects
+for (x in dirs) {
+  name <- gsub('data/','',x)
+  
+  data <- Read10X(paste0(x,'/'))
+  assign(name, CreateSeuratObject(counts = data, project = 'NR03'))
+}
+
+obj_list <- list(A2 = A2, A3 = A3, A4 = A4, A5 = A5, A6 = A6)
+
+# Calculating percent.mt
+for (i in c(1:5)) {
+  obj_list[[i]]$percent.mt <- PercentageFeatureSet(obj_list[[i]], pattern = '^MT-')
+  obj_list[[i]]$sample <- paste0('A',i+1)
+}
+list2env(obj_list, .GlobalEnv)
+
+# Merge the objects
+A_merged <- merge(A2, y = c(A3,A4,A5,A6))
+A_merged
+# n cells = 77531
+SaveH5Seurat(A_merged, file = './outputs/A/SeuratObj_A_merged_without_A7', overwrite = T)
+
+# QC check
+metadata <- A_merged@meta.data
+
+pdf(file = './outputs/plots/QCPlots_A_wo_A7.pdf', width = 11, height = 8, paper = 'a4r')
+VlnPlot(A_merged, features = 'nFeature_RNA', group.by = 'sample') + geom_hline(yintercept = 6000) + geom_hline(yintercept = 300)
+VlnPlot(A_merged, features = 'nCount_RNA', group.by = 'sample') + geom_hline(yintercept = 50000) + geom_hline(yintercept = 1000)
+VlnPlot(A_merged, features = 'percent.mt', group.by = 'sample') + geom_hline(yintercept = 90)
+
+metadata %>%
+  ggplot(aes(x=sample, fill=sample)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=after_stat(count)), vjust=-1) +
+  theme_classic() +
+  scale_fill_manual(values=cbbPalette) +
+  labs(title='N cells per lane', y = 'n')
+
+p1 <- metadata %>% 
+  ggplot(aes(x=nCount_RNA, color=sample, fill=sample)) +
+  geom_density(alpha = 0.2) +
+  scale_x_log10() +
+  theme_classic() +
+  scale_fill_manual(values=cbbPalette) +
+  scale_colour_manual(values=cbbPalette) +
+  geom_vline(xintercept = 1000) +
+  geom_vline(xintercept = 50000) +
+  labs(title='RNA counts per cell', y = 'Cell density')
+
+p2 <- metadata %>% 
+  ggplot(aes(x=nFeature_RNA, color=sample, fill=sample)) +
+  geom_density(alpha = 0.2) +
+  scale_x_log10() +
+  theme_classic() +
+  scale_fill_manual(values=cbbPalette) +
+  scale_colour_manual(values=cbbPalette) +
+  geom_vline(xintercept = 200) +
+  geom_vline(xintercept = 6000) +
+  labs(title='Features per cell', y = 'Cell density')
+
+p3 <- metadata %>% 
+  ggplot(aes(x=percent.mt, color=sample, fill=sample)) +
+  geom_density(alpha = 0.2) +
+  scale_x_log10() +
+  theme_classic() +
+  scale_fill_manual(values=cbbPalette) +
+  scale_colour_manual(values=cbbPalette) +
+  geom_vline(xintercept = 90) +
+  labs(title='% MT RNA per cell', y = 'Cell density')
+
+grid.arrange(p1, p2, p3, ncol = 3)
+
+metadata %>%
+  ggplot(aes(x=nCount_RNA, y=nFeature_RNA, color=percent.mt)) +
+  geom_point(size = 0.5) +
+  scale_colour_gradient(low = "gray90", high = "blue") +
+  scale_x_log10() + 
+  scale_y_log10() + 
+  theme_classic() +
+  geom_vline(xintercept = 1000) +
+  geom_vline(xintercept = 50000) +
+  geom_hline(yintercept = 200) +
+  geom_hline(yintercept = 6000) +
+  facet_wrap(~sample)
+
+dev.off()
+
+# Filtering
+# percent.mt < 90%
+# nFeature_RNA > 200 and < 6000
+# nCount_RNA > 1000 and < 60000
+
+A_merged <- LoadH5Seurat('./outputs/A/SeuratObj_A_merged_without_A7.h5seurat')
+
+A_filtered <- subset(A_merged, subset = nCount_RNA > 1000 &
+                       nCount_RNA < 60000 &
+                       nFeature_RNA > 200 &
+                       nFeature_RNA < 6000 &
+                       percent.mt < 90)
+
+# Normalizing and clustering again
+A_filtered <- SCTransform(A_filtered, vars.to.regress = "percent.mt", verbose = F)
+A_filtered <- RunPCA(A_filtered)
+A_filtered <- FindNeighbors(A_filtered, dims = 1:50)
+A_filtered <- FindClusters(A_filtered, resolution = 0.4)
+A_filtered <- RunUMAP(A_filtered, dims = 1:50)
+
+# Saving as RDS and H5file
+SaveH5Seurat(A_filtered, filename = './outputs/SeuratObj_A_filtered_clustered_woA7.h5Seurat', overwrite = T)
