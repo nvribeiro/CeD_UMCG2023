@@ -9,6 +9,4 @@ Department of Genetics, University Medical Center Groningen, Netherlands<br>
 This repository contains the scripts used for raw data processing, data preprocessing, and downstream analysis.
 
 ---
-## TODO: Add info about experimental design
-Hello world!
-Trying something new
+Work in progress...
