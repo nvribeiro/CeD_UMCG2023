@@ -360,12 +360,80 @@ A_filtered <- subset(A_merged, subset = nCount_RNA > 1000 &
                        nFeature_RNA < 6000 &
                        percent.mt < 90)
 
-# Normalizing and clustering again
-A_filtered <- SCTransform(A_filtered, vars.to.regress = "percent.mt", verbose = F)
+# Normalizing and clustering
+A_filtered <- SCTransform(A_filtered, vars.to.regress = "percent.mt")
 A_filtered <- RunPCA(A_filtered)
 A_filtered <- FindNeighbors(A_filtered, dims = 1:50)
 A_filtered <- FindClusters(A_filtered, resolution = 0.4)
 A_filtered <- RunUMAP(A_filtered, dims = 1:50)
 
-# Saving as RDS and H5file
+# Saving
 SaveH5Seurat(A_filtered, filename = './outputs/SeuratObj_A_filtered_clustered_woA7.h5Seurat', overwrite = T)
+
+# Checking clusters
+A_obj <- LoadH5Seurat('./outputs/A/SeuratObj_A_filtered_clustered_woA7.h5Seurat',
+                      assays = 'SCT', reductions = 'umap', graphs = FALSE)
+
+DimPlot(A_obj, reduction = 'umap')
+VlnPlot(A_obj, features = 'percent.mt')
+VlnPlot(A_obj, features = 'nCount_RNA')
+VlnPlot(A_obj, features = 'nFeature_RNA')
+
+##
+## Preprocessing A7 alone --------------------------------------------------------
+##
+
+A7_obj <- Read10X('./data_preprocessing/data/A7/') %>%
+  CreateSeuratObject(project = 'NR03')
+
+A7_obj$percent.mt <- PercentageFeatureSet(A7_obj, pattern = '^MT-')
+
+# QC
+metadata <- A7_obj@meta.data
+
+pdf(file = './data_preprocessing/outputs/plots/A7_QC_plots.pdf', width = 11, height = 8, paper = 'a4r')
+
+VlnPlot(A7_obj, features = c('nFeature_RNA', 'nCount_RNA', 'percent.mt'))
+
+p1 <- metadata %>% 
+  ggplot(aes(x=nCount_RNA)) +
+  geom_density(alpha = 0.2) +
+  scale_x_log10() +
+  theme_classic() +
+  geom_vline(xintercept = 1000) +
+  geom_vline(xintercept = 30000) +
+  labs(title='RNA counts per cell', y = 'Cell density')
+
+p2 <- metadata %>% 
+  ggplot(aes(x=nFeature_RNA)) +
+  geom_density(alpha = 0.2) +
+  scale_x_log10() +
+  theme_classic() +
+  geom_vline(xintercept = 300) +
+  geom_vline(xintercept = 6000) +
+  labs(title='Features per cell', y = 'Cell density')
+
+p3 <- metadata %>% 
+  ggplot(aes(x=percent.mt)) +
+  geom_density(alpha = 0.2) +
+  scale_x_log10() +
+  theme_classic() +
+  geom_vline(xintercept = 90) +
+  labs(title='% MT RNA per cell', y = 'Cell density')
+
+grid.arrange(p1, p2, p3, ncol = 3)
+
+metadata %>%
+  ggplot(aes(x=nCount_RNA, y=nFeature_RNA, color=percent.mt)) +
+  geom_point(size = 0.5) +
+  scale_colour_gradient(low = "gray90", high = "blue") +
+  scale_x_log10() + 
+  scale_y_log10() + 
+  theme_classic() +
+  geom_vline(xintercept = 1000) +
+  geom_vline(xintercept = 30000) +
+  geom_hline(yintercept = 300) +
+  geom_hline(yintercept = 6000)
+
+dev.off()
+        

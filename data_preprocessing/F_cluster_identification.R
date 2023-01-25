@@ -1,11 +1,8 @@
 # Cluster indentification - batch F
-setwd('C:/Users/nvrib/Desktop/IMIM/Groningen/RPII/Projects/NR03_scRNAseq_main_analysis/data_preprocessing/')
 
 # Load libraries
 library(Seurat)
-library(ggplot2)
 library(tidyverse)
-library(gridExtra)
 library(SeuratDisk)
 
 # Loading function to plot markers
@@ -77,3 +74,44 @@ p
 
 # Save this object
 SaveH5Seurat(F_obj, './outputs/F/SeuratObj_F_clustered_res04_identified')
+
+## New identification with clusters filtered -----------------------------------
+F_obj <- LoadH5Seurat('./data_preprocessing/outputs/F/SeuraObj_f_reclustered_res04.h5seurat')
+
+DimPlot(F_obj, reduction = 'umap', label = TRUE)
+VlnPlot(F_obj, features = 'percent.mt')
+VlnPlot(F_obj, features = 'nFeature_RNA')
+VlnPlot(F_obj, features = 'nCount_RNA')
+
+# Finding cluster markers
+F.markers <- FindAllMarkers(F_obj, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+F.top.markers <- F.markers %>% 
+  group_by(cluster) %>% 
+  arrange(p_val_adj, by.group = TRUE) %>%
+  top_n(n = 10, wt = avg_log2FC)
+
+# Reshaping the table
+F.top.markers.clean <- F.top.markers %>%
+  select(cluster, gene) %>%
+  group_by(cluster) %>%
+  summarise(markers = str_c(unlist(cur_data()), collapse=', '))
+
+# Saving
+write.csv(F.top.markers.clean, './data_preprocessing/outputs/F/F_clusters_top_markers_reclustered.csv', row.names = FALSE)
+
+# Clusters inspection
+VlnPlot(F_obj, features = c('ALPI', 'FABP2', 'APOA1', 'APOA4'))
+
+## Testing Ucell ---------------------------------------
+library(UCell)
+
+gene.sets <- list(Epithelial_signature = c('ALPI', 'FABP2', 'APOA1', 'APOA4'))
+
+
+F_obj <- AddModuleScore_UCell(F_obj, features = gene.sets)
+
+FeaturePlot(F_obj, features = 'Epithelial_signature_UCell_kNN')
+VlnPlot(F_obj, features = 'Epithelial_signature_UCell_kNN')
+
+# Dealing with sparsity
+F_obj <- SmoothKNN(F_obj, reduction = 'pca', signature.names = 'Epithelial_signature_UCell_kNN')

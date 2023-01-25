@@ -54,7 +54,7 @@ VlnPlot(F_obj_new_filters, features = 'percent.mt')
 
 plotMarkers(F_obj_new_filters, markers_csv = '../../resources/cell_markers.csv', output = './outputs/plots/F_reclustered')
 
-### Trying a different approach
+## Trying a different approach --------------------------------------------------
 hfile <- Connect('./outputs/F/SeuratObj_F_clustered_res04_identified.h5seurat')
 hfile$index()
 hfile[["assays/SCT"]]

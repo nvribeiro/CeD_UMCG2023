@@ -7,7 +7,6 @@ cbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2",
 
 # Load libraries
 library(Seurat)
-library(ggplot2)
 library(tidyverse)
 library(gridExtra)
 library(SeuratDisk)
