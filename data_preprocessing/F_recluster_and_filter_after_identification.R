@@ -114,3 +114,14 @@ VlnPlot(F_new, features = 'percent.mt')
 SaveH5Seurat(F_new, './outputs/F/SeuraObj_f_reclustered_res04.h5seurat', overwrite = T)
 
 plotMarkers(F_new, markers_csv = '../../resources/cell_markers.csv', output = './outputs/plots/NEW2001_F_')
+
+# Adding cluster names to the metadata
+clusters.ids <- read.csv('./data_preprocessing/outputs/F/cell_IDs_F.csv')
+tmp <- F_obj@meta.data
+tmp$seurat_clusters <- as.integer(tmp$seurat_clusters)
+tmp <- left_join(tmp, clusters.ids, by = "seurat_clusters")
+
+F_obj@meta.data <- tmp
+
+# Saving
+SaveH5Seurat(F_obj, './data_preprocessing/outputs/F/SeuratObj_F_identified_filtered', overwrite = T)

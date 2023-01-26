@@ -4,14 +4,13 @@
 library(Seurat)
 library(tidyverse)
 library(SeuratDisk)
+library(patchwork)
 
 # Loading function to plot markers
-source('C:/Users/nvrib/Desktop/IMIM/Groningen/RPII/Projects/scripts/function_plot_markers.R')
+source('./functions/my_functions.R')
 
 F_obj <- LoadH5Seurat('./outputs/F/SeuraObj_f_reclustered_res04.h5seurat')
 F_obj <- LoadH5Seurat('./outputs/F/SeuratObj_F_singlets_genotyped_clustered_res04_harmony.h5seurat')
-
-F_obj <- F_new
 
 # Finding cluster markers
 F.markers <- FindAllMarkers(F_obj, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
@@ -85,6 +84,11 @@ VlnPlot(F_obj, features = 'nCount_RNA')
 
 # Finding cluster markers
 F.markers <- FindAllMarkers(F_obj, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+# Save
+write.csv(F.markers, './data_preprocessing/outputs/F/F_all_markers_reclustered.csv', row.names = F)
+
+# Getting the top 10 markers per cluster
 F.top.markers <- F.markers %>% 
   group_by(cluster) %>% 
   arrange(p_val_adj, by.group = TRUE) %>%
@@ -97,21 +101,15 @@ F.top.markers.clean <- F.top.markers %>%
   summarise(markers = str_c(unlist(cur_data()), collapse=', '))
 
 # Saving
-write.csv(F.top.markers.clean, './data_preprocessing/outputs/F/F_clusters_top_markers_reclustered.csv', row.names = FALSE)
+write.csv(F.top.markers.clean, './data_preprocessing/outputs/F/F_clusters_top10_markers_reclustered.csv', row.names = FALSE)
+
+## Cluster identification using UCell
+epithelial_markers <- '../../resources/cell_type_markers_small_intestine_epithelial.csv'
+other_markers <- '../../resources/cell_type_markers_small_intestine_immune_and_others.csv'
+
+PlotUCell(F_obj, epithelial_markers, output = './data_preprocessing/outputs/plots/F_epithelial_clusters_Ucell')
+PlotUCell(F_obj, other_markers, output = './data_preprocessing/outputs/plots/F_immune_others_clusters_Ucell')
 
 # Clusters inspection
-VlnPlot(F_obj, features = c('ALPI', 'FABP2', 'APOA1', 'APOA4'))
-
-## Testing Ucell ---------------------------------------
-library(UCell)
-
-gene.sets <- list(Epithelial_signature = c('ALPI', 'FABP2', 'APOA1', 'APOA4'))
-
-
-F_obj <- AddModuleScore_UCell(F_obj, features = gene.sets)
-
-FeaturePlot(F_obj, features = 'Epithelial_signature_UCell_kNN')
-VlnPlot(F_obj, features = 'Epithelial_signature_UCell_kNN')
-
-# Dealing with sparsity
-F_obj <- SmoothKNN(F_obj, reduction = 'pca', signature.names = 'Epithelial_signature_UCell_kNN')
+FeaturePlot(F_obj, features = c('GJA1', 'SOX10'))
+VlnPlot(F_obj, features = c('GJA1', 'SOX10'))
