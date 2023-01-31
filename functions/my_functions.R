@@ -5,57 +5,68 @@ library(tidyverse)
 library(patchwork)
 
 ## Function plotMarkers() ------------------------------------------------------
-# Function to plot VlnPlots and FeaturePlots for all markers in a given dataset
+# This function plots a FeaturePlot and a VlnPlot (optional) for each marker in a provided dataset.
 #
 
-## This function requires the following arguments:
-# obj: A clustered Seurat object.
-# markers: A .csv file with two colums: 1 - cell.type, 2 - marker. One marker per row, multiple markers per cell are allowed.
-# output: Path where the files should be saved. Plots are saved as VlnPlots.pdf and FeaturePlots.pdf. Default is current working directory
-##
+# Usage: plotMarkers(data, markers, output)
+# data: a clustered Seurat object
+# markers: a .csv file containing two columns: 1) cell type name (Cell.Type) 2) markers for that cell type separated by ', ' (Markers)
+# vln: TRUE plots also the VlnPlots for the markers, defaults is FALSE (will plot only FeaturePlots)
+# output: file name to save the plots (saved as .pdf by default)
 
-## Output
-# Two pdf files containing all the plots for all markers and cell types provided
-##
-
-plotMarkers <- function(obj, markers_csv, output = getwd()){
+plotMarkers <- function(data, markers, vln = FALSE, output){
   
-  # Loading the markers list
-  markers_list <- read.csv(markers_csv)
+  # Loading and preparing the markers list
+  signatures <- read.csv(markers, na.strings = '')
   
-  # Reformating the input table into a list with cell types and their respective markers
-  cell.type <- unique(markers_list$cell.type)
-  names(cell.type) <- cell.type
-  cell.markers.list <- map(cell.type, ~markers_list$marker[markers_list$cell.type == .])
+  signatures <- signatures %>% separate_rows(2, sep = ', ')
+  signatures$Cell.Type <- str_replace_all(signatures$Cell.Type, '\\W', '.')
+  cell_types <- unique(signatures$Cell.Type)
   
-  # Ploting the VlnPlots
-  Vln <- imap(cell.markers.list, ~VlnPlot(obj, features = .x) & labs(subtitle=paste0('marker for: ',.y)))
-  pdf(file=paste0(output,'VlnPlots.pdf'), width = 11, height = 8, paper = 'a4r')
-  print(Vln)
-  dev.off()
+  signatures.list <- list()
   
-  # Ploting the FeaturePlots
-  Feat <- imap(cell.markers.list, ~FeaturePlot(F_obj, features = .x) & labs(subtitle=paste0('marker for: ',.y)))
-  pdf(file=paste0(output,'FeaturePlots.pdf'), width = 11, height = 8, paper = 'a4r')
+  for (i in cell_types) {
+    tmp <- signatures %>%
+      filter(Cell.Type == i) %>%
+      pull(Markers)
+    
+    signatures.list[[i]] <- tmp
+  }
+  
+  # Ploting
+  if (vln == TRUE) {
+    Vln <- imap(signatures.list, ~VlnPlot(data, features = .x) + NoLegend())
+    
+    pdf(paste0(output,'_VlnPlots.pdf'), width = 11, height = 8, paper = 'a4r')
+    print(Feat)
+    dev.off()
+    
+    return(paste0('Violin plots saved to: ', output, '_VlnPlots.pdf'))
+  }
+  
+  Feat <- imap(signatures.list, ~FeaturePlot(data, features = .x))
+  
+  # Saving
+  pdf(paste0(output,'_FeaturePlots.pdf'), width = 11, height = 8, paper = 'a4r')
   print(Feat)
   dev.off()
   
-  return(paste0('Plots saved to: ',output,'VlnPlots.pdf and ',output,'FeaturePlots.pdf'))
+  return(paste0('Feature plots saved to: ' ,output, '_FeaturePlots.pdf'))
   
 }
 
-## Function plot_Ucell() -------------------------------------------------------
+## Function plotUcell() -------------------------------------------------------
 # This function is used to identify clusters using the Ucell (https://github.com/carmonalab/UCell) signature scoring package.
 # Given a set of markers for a cell type, Ucell will calculate the score of cluster X being the cell type you gave the gene signature for.
 # The output are Feature Plots and Violin Plots for each cell signature.
 #
-# Usage: plot_Ucell(data, markers, output, reduction = 'umap')
+# Usage: plotUcell(data, markers, output, reduction = 'umap')
 # data: a clustered Seurat object
 # markers: a .csv file containing two columns: 1) cell type name (Cell.Type) 2) markers for that cell type separated by ', ' (Markers)
 # output: file name to save the plots (saved as .pdf by default)
 # reduction: reduction to use in the UCell score calculations. Default = 'umap'
 
-PlotUCell <- function(data, markers, output, reduction = 'umap') {
+PlotUCell <- function(data, markers, output = getwd(), reduction = 'umap') {
   
   signatures <- read.csv(markers, na.strings = '')
   

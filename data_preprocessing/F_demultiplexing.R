@@ -5,15 +5,14 @@ setwd('./Desktop/IMIM/Groningen/RPII/Projects/NR03_scRNAseq_main_analysis/data_p
 cbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 library(Seurat)
-library(ggplot2)
 library(tidyverse)
-library(gridExtra)
+library(patchwork)
 
 # Load demuxlet data
-files <- str_subset(list.files(path = './demuxlet', recursive = F, full.names = T), '.best')
+files <- str_subset(list.files(path = './data_preprocessing/demuxlet', recursive = F, full.names = T), 'F._demuxlet.best')
 
 for (x in files) {
-  name <- gsub('./demuxlet/','',x)
+  name <- gsub('./data_preprocessing/demuxlet/','',x)
   
   data <- read.delim(x)
   assign(name, as.data.frame(data))
@@ -36,7 +35,7 @@ AMB.list <- map(demux_list, ~filter(.x, grepl("AMB", BEST)))
 full_demuxlet <- bind_rows(demux_list) %>% select(BARCODE.UPDATED, BEST, SNG.1ST)
 
 # Load F dataset
-F_filtered <- readRDS('./outputs/F/SeuratObj_F_filtered.rds')
+F_filtered <- readRDS('./data_preprocessing/outputs/F/SeuratObj_F_filtered.rds')
 
 # Adding the genotype to the object metadata
 tmp <- F_filtered@meta.data
@@ -56,6 +55,10 @@ tmp <- left_join(tmp, samples_info, by = c('genotype' = 'sample_ID'))
 
 row.names(tmp) <- tmp$BARCODE.UPDATED
 
+# Replacing 'wrong' genotypes (doblets and ambiguous) with NA
+tmp <- tmp %>% 
+  mutate(genotype = replace(genotype, droplet != 'singlet', NA))
+
 # Excluding BEST column
 tmp <- tmp %>% select(!BEST)
 
@@ -68,30 +71,26 @@ saveRDS(F_filtered, file = './outputs/F/SeuratObj_F_filtered_genotyped.rds')
 # Getting the number of singles, doblets and ambiguous
 summary <- tmp %>% group_by(droplet) %>% summarise(n()) %>% rename(count = 'n()')
 
-png('./outputs/plots/F_droplets.png', width = 600, height = 500)
-p <- ggplot(tmp, aes(sample, fill=droplet)) +
+p1 <- ggplot(tmp, aes(sample, fill=droplet)) +
   geom_bar(position = 'fill') +
-  labs(x = 'lane', y = 'fraction of cells', title = 'Number of singlets, doblets and ambiguous droplets in batch F') +
+  labs(x = 'lane', y = 'fraction of cells', title = 'Proportion of singlets, doblets and ambiguous droplets in batch F') +
   theme_classic()
-plot(p)
-dev.off()
 
-# Some other plots
-F_obj <- readRDS('./outputs/SeuratObj_F_filtered_genotyped.rds')
-tmp <- F_obj@meta.data
-
-png('./outputs/plots/F_genotypes_samples.png', width = 700, height = 400)
-p1 <- ggplot(tmp, aes(sample, fill=genotype)) +
+p2 <- ggplot(tmp, aes(sample, fill=genotype)) +
   geom_bar(position = 'fill') +
   labs(x = 'lane', y = 'fraction of cells', title = 'Genotype distribution in each lane') +
   scale_fill_manual(values=cbPalette) +
   theme_classic()
-p2 <- ggplot(tmp, aes(sample, fill=status)) +
+
+p3 <- ggplot(filter(tmp, !is.na(genotype)), aes(sample, fill=status)) +
   geom_bar(position = 'fill') +
   labs(x = 'lane', y = 'fraction of cells', title = 'Status distribution in each lane') +
   scale_fill_manual(values=cbPalette) +
   theme_classic()
-grid.arrange(p1,p2, ncol=2)
+
+pdf('./data_preprocessing/outputs/plots/F_demultiplexing.pdf', width = 11, height = 8, paper = 'a4r')
+p1
+p2 | p3
 dev.off()
 
 tmp %>% group_by(status) %>% summarise(n())

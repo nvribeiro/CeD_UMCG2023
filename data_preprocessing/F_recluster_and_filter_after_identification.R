@@ -62,38 +62,51 @@ hfile$close_all()
 
 #F_obj <- LoadH5Seurat('./outputs/F/SeuratObj_F_clustered_res04_identified.h5seurat', assays = list(SCT = c("data", "scale.data")))
 
-F_obj <- LoadH5Seurat('./outputs/F/SeuratObj_F_clustered_res04_identified.h5seurat')
+F_obj <- LoadH5Seurat('./data_preprocessing/outputs/F/SeuratObj_F_clustered_res04_identified.h5seurat')
+VlnPlot(F_obj, features = 'percent.mt') + NoLegend()
+
 
 # Grouping all immune cells
-immune <- subset(F_obj, subset = (seurat_clusters == 0 | seurat_clusters == 1 | seurat_clusters == 5 |
-                                    seurat_clusters == 11 | seurat_clusters == 12 | seurat_clusters == 17 | seurat_clusters == 18))
+immune <- subset(F_obj, subset = (((seurat_clusters == 0 | seurat_clusters == 1 | seurat_clusters == 11 |
+                                  seurat_clusters == 12 | seurat_clusters == 17 | seurat_clusters == 18) & percent.mt < 10)) |
+                                  (seurat_clusters == 5 & percent.mt < 25))
 
 # MT filter
-VlnPlot(immune, features = 'percent.mt') + geom_hline(yintercept = 10)
-immune <- subset(immune, subset = percent.mt < 10)
+VlnPlot(immune, features = 'percent.mt') + NoLegend()
 immune
 
-VlnPlot(immune, features = 'percent.mt')
-
 # Grouping all epithelial cells
-epithelial <- subset(F_obj, subset = (seurat_clusters == 4 | seurat_clusters == 6 | seurat_clusters == 16 |
-                                      seurat_clusters == 8 | seurat_clusters == 9 | seurat_clusters == 10 | seurat_clusters == 13) |
-                                      (seurat_clusters == 7 & percent.mt < 20))
+epithelial <- subset(F_obj, subset = ((seurat_clusters == 4 | seurat_clusters == 6 | seurat_clusters == 16 | seurat_clusters == 7 |
+                                      seurat_clusters == 8 | seurat_clusters == 9 | seurat_clusters == 10 | seurat_clusters == 13) 
+                                      & percent.mt < 75))
 epithelial
  
-VlnPlot(epithelial, features='percent.mt') + geom_hline(yintercept = 20)
+VlnPlot(epithelial, features='percent.mt') + NoLegend()
 
 # Other cells 
 others <- subset(F_obj, subset = ((seurat_clusters == 3 | seurat_clusters == 14 | seurat_clusters == 19) & percent.mt < 15) |
-                                  seurat_clusters == 15 | seurat_clusters == 2)
+                                  (seurat_clusters == 15 & percent.mt < 75))
 others
 
-VlnPlot(others, features = 'percent.mt') + NoLegend() + geom_hline(yintercept = 15)
+VlnPlot(others, features = 'percent.mt') + NoLegend()
 
 # Merging everything
 F_new <- merge(x = immune, y = list(epithelial, others))
 VlnPlot(F_new, features = 'percent.mt') + NoLegend()
+F_new
 
+# Adding cluster names to the metadata
+clusters.ids <- read.csv('./data_preprocessing/outputs/F/cell_IDs_F.csv')
+tmp <- F_new@meta.data
+tmp$seurat_clusters <- as.integer(tmp$seurat_clusters)
+tmp <- left_join(tmp, clusters.ids, by = "seurat_clusters")
+
+F_new@meta.data <- tmp
+
+# Saving
+SaveH5Seurat(F_new, './data_preprocessing/outputs/F/SeuratObj_F_identified_filtered', overwrite = T)
+
+############
 # Re-cluster again
 DefaultAssay(F_new) <- 'RNA'
 F_new
@@ -114,14 +127,3 @@ VlnPlot(F_new, features = 'percent.mt')
 SaveH5Seurat(F_new, './outputs/F/SeuraObj_f_reclustered_res04.h5seurat', overwrite = T)
 
 plotMarkers(F_new, markers_csv = '../../resources/cell_markers.csv', output = './outputs/plots/NEW2001_F_')
-
-# Adding cluster names to the metadata
-clusters.ids <- read.csv('./data_preprocessing/outputs/F/cell_IDs_F.csv')
-tmp <- F_obj@meta.data
-tmp$seurat_clusters <- as.integer(tmp$seurat_clusters)
-tmp <- left_join(tmp, clusters.ids, by = "seurat_clusters")
-
-F_obj@meta.data <- tmp
-
-# Saving
-SaveH5Seurat(F_obj, './data_preprocessing/outputs/F/SeuratObj_F_identified_filtered', overwrite = T)
