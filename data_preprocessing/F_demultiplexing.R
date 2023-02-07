@@ -46,9 +46,9 @@ tmp <- left_join(tmp, full_demuxlet, by="BARCODE.UPDATED")
 tmp <- tmp %>% mutate(
   droplet = case_when(
     grepl("SNG", BEST) == TRUE ~ 'singlet',
-    grepl("DBL", BEST) == TRUE ~ 'doblet',
+    grepl("DBL", BEST) == TRUE ~ 'doublet',
     grepl("AMB", BEST) == TRUE ~ 'ambiguous')) %>%
-  rename(genotype = SNG.1ST)
+  dplyr::rename(genotype = SNG.1ST)
 
 samples_info <- read.csv('../samples_info/samples_info.csv')
 tmp <- left_join(tmp, samples_info, by = c('genotype' = 'sample_ID'))
@@ -94,3 +94,11 @@ p2 | p3
 dev.off()
 
 tmp %>% group_by(status) %>% summarise(n())
+
+## Finding more doublets using scDblFinder -------------------------------------
+library(scDblFinder)
+tmp <- tmp %>%
+  mutate(doublet = if_else(droplet == 'doublet', TRUE, FALSE))
+F_filtered@meta.data <- tmp
+
+saveRDS(F_filtered, './data_preprocessing/outputs/F/F_for_doublets.rds')

@@ -119,7 +119,7 @@ tmp <- left_join(tmp, A7_demuxlet.best, by="BARCODE")
 tmp <- tmp %>% mutate(
   droplet = case_when(
     grepl("SNG", BEST) == TRUE ~ 'singlet',
-    grepl("DBL", BEST) == TRUE ~ 'doblet',
+    grepl("DBL", BEST) == TRUE ~ 'doublet',
     grepl("AMB", BEST) == TRUE ~ 'ambiguous')) %>% 
   dplyr::rename(genotype = SNG.1ST)
 
@@ -134,6 +134,9 @@ tmp <- tmp %>%
 
 # Excluding BEST column
 tmp <- tmp %>% select(!BEST)
+
+tmp <- tmp %>%
+  mutate(doublet = if_else(droplet == 'doublet', TRUE, FALSE))
 
 # Getting the number of singles, doblets and ambiguous
 summary <- tmp %>% group_by(droplet) %>% summarise(n()) %>% dplyr::rename(count = 'n()')
@@ -169,4 +172,58 @@ A7_obj@meta.data <- tmp
 
 # Saving the updated SeuratObject
 SaveH5Seurat(A7_obj, file = './data_preprocessing/outputs/A/SeuraObj_A7_genotyped', overwrite = T)
+saveRDS(A7_obj, file = './data_preprocessing/outputs/A/A7_for_doublets.rds')
 
+## Finding more doublets using scDblFinder -------------------------------------
+A_obj <- readRDS('./data_preprocessing/outputs/A/SeuratObj_A_filtered.rds')
+
+demux_list <- list(A2 = A2_demuxlet.best,
+                   A3 = A3_demuxlet.best,
+                   A4 = A4_demuxlet.best,
+                   A5 = A5_demuxlet.best,
+                   A6 = A6_demuxlet.best,
+                   A7 = A7_demuxlet.best)
+
+# Updating the barcodes to match the merged dataset
+demux_list <- imap(demux_list, ~mutate(.x, BARCODE.UPDATED = case_when(
+  .y == 'A2' ~ paste0(BARCODE,'_1'),
+  .y == 'A3' ~ paste0(BARCODE,'_2'),
+  .y == 'A4' ~ paste0(BARCODE,'_3'),
+  .y == 'A5' ~ paste0(BARCODE,'_4'),
+  .y == 'A6' ~ paste0(BARCODE,'_5'),
+  .y == 'A7' ~ paste0(BARCODE,'_6')),
+  .after = BARCODE))
+
+# Creating a final merged demuxlet df just with the barcodes and assigned genotype
+full_demuxlet <- bind_rows(demux_list) %>% select(BARCODE.UPDATED, BEST, SNG.1ST)
+
+tmp <- A_obj@meta.data
+tmp$BARCODE.UPDATED <- row.names(tmp)
+tmp <- left_join(tmp, full_demuxlet, by="BARCODE.UPDATED")
+
+# Adding some extra information in the table
+tmp <- tmp %>% mutate(
+  droplet = case_when(
+    grepl("SNG", BEST) == TRUE ~ 'singlet',
+    grepl("DBL", BEST) == TRUE ~ 'doublet',
+    grepl("AMB", BEST) == TRUE ~ 'ambiguous')) %>% 
+  dplyr::rename(genotype = SNG.1ST)
+
+samples_info <- read.csv('../samples_info/samples_info.csv')
+tmp <- left_join(tmp, samples_info, by = c('genotype' = 'sample_ID'))
+
+row.names(tmp) <- tmp$BARCODE.UPDATED
+
+# Replacing 'wrong' genotypes (doblets and ambiguous) with NA
+tmp <- tmp %>% 
+  mutate(genotype = replace(genotype, droplet != 'singlet', NA))
+
+# Excluding BEST column
+tmp <- tmp %>% select(!BEST)
+
+tmp <- tmp %>%
+  mutate(doublet = if_else(droplet == 'doublet', TRUE, FALSE))
+A_obj@meta.data <- tmp
+
+# Saving A for doublets
+saveRDS(A_obj, file = './data_preprocessing/outputs/A/A_for_doublets.rds')

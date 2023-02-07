@@ -5,3 +5,4 @@
 data_preprocessing/data/
 data_preprocessing/demuxlet/
 data_preprocessing/outputs/
+downstream_analysis/output/

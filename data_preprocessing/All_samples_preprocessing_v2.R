@@ -250,3 +250,15 @@ SaveH5Seurat(All_obj, paste0(path, 'All_samples_v3_identified'))
 
 # Saving just the metadata
 write.csv(metadata, paste0(path, 'All_samples_v3_metadata.csv'))
+
+## Checking for where A7 cells are ----------------------------------------------
+obj <- LoadH5Seurat('./data_preprocessing/outputs/all/All_samples_v3_identified.h5seurat',
+                    assay = 'SCT', reductions = 'umap', graphs = FALSE, plots = FALSE)
+
+
+A7_cells <- WhichCells(obj, expression = lane == 'A7')
+DimPlot(obj, split.by = 'batch', label = T) + NoLegend()
+FeaturePlot(obj, features = 'percent.mt')
+# Not a problem
+
+## Checking the new clustering after removing extra doublets -------------------
