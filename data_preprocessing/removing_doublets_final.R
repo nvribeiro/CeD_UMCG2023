@@ -100,20 +100,3 @@ obj <- LoadH5Seurat(paste0(path, 'All_samples_v3_identified.h5seurat'))
 obj_v5 <- subset(obj, cells = barcodes_to_keep)
 
 saveRDS(obj_v5, paste0(path, 'All_samples_v5.rds'))
-
-# Running in the cluster
-obj_v5 <- readRDS(paste0(path, 'All_samples_v5.rds'))
-
-DefaultAssay(obj_v5) <- 'RNA'
-obj_v5 <- All_samples %>% 
-  SCTransform(vars.to.regress = "percent.mt", verbose = F) %>%
-  RunPCA() %>%
-  FindNeighbors(dims = 1:50) %>%
-  FindClusters(resolution = 0.4) %>%
-  RunUMAP(dims = 1:50)
-
-SaveH5Seurat(obj_v5, filename = paste0(path, 'All_samples_clustered_v5'), overwrite = T)
-
-# Finding markers
-All_markers <- FindAllMarkers(obj_v5, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-write.csv(All_markers, paste0(path, 'All_samples_v5_markers.csv'))

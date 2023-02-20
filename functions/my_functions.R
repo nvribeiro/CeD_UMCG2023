@@ -3,6 +3,7 @@ library(Seurat)
 library(UCell)
 library(tidyverse)
 library(patchwork)
+library(BiocParallel)
 
 ## Function plotMarkers() ------------------------------------------------------
 # This function plots a FeaturePlot and a VlnPlot (optional) for each marker in a provided dataset.

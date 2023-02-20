@@ -260,5 +260,3 @@ A7_cells <- WhichCells(obj, expression = lane == 'A7')
 DimPlot(obj, split.by = 'batch', label = T) + NoLegend()
 FeaturePlot(obj, features = 'percent.mt')
 # Not a problem
-
-## Checking the new clustering after removing extra doublets -------------------

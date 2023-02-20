@@ -5,4 +5,7 @@
 data_preprocessing/data/
 data_preprocessing/demuxlet/
 data_preprocessing/outputs/
-downstream_analysis/output/
+subclustering/outputs/
+clusters_refcheck/output/
+cell_proportion_analysis/output/
+.ipynb_checkpoints
