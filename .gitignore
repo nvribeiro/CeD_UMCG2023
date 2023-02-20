@@ -8,5 +8,5 @@ data_preprocessing/outputs/
 subclustering/outputs/
 clusters_refcheck/output/
 cell_proportion_analysis/output/
-cell_propotion_analysis/*.ipnyb
+cell_proportion_analysis/*.ipnyb
 .ipynb_checkpoints
