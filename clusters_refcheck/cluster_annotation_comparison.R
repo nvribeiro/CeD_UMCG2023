@@ -2,33 +2,24 @@
 library(Seurat)
 library(tidyverse)
 library(patchwork)
-library(pals)
 library(ggrepel)
 library(SeuratDisk)
 
-path <- './data_preprocessing/outputs/all/'
-path2 <- 'D:/CeDNN_scRNAseq_2023/elmentaite_2021_data/'
-output <- './clusters_refcheck/output/'
+out_path <- '/groups/umcg-wijmenga/tmp01/users/umcg-aramirezsanchez/umcg-nribeiro/NR03_scRNAseq/ongoing/outputs/data_preprocessing/'
+elmentaite_path <- '/groups/umcg-wijmenga/tmp01/users/umcg-aramirezsanchez/umcg-nribeiro/NR03_scRNAseq/ongoing/mapping_dataset/'
 
-elmentaite_adult <- readRDS(paste0(path2, 'elmentaite_2021_adult_smallInt_sct_clus.rds'))
+elmentaite_adult <- readRDS(paste0(elmentaite_path, 'elmentaite_2021_adult_smallInt_sct_clus.rds'))
 #elmentaite_ped <- readRDS(paste0(path2 , 'elmentaite_2021_pediatric_smallInt_sct_clus.rds'))
 
-my_dataset <- readRDS(paste0(path, 'All_obj_v5_final_indentified.rds'))
+my_dataset <- readRDS(paste0(out_path, 'SeuratObj_AllCells_SCT_RES04_clustered_final_annotated.rds'))
 
-# Testing with adult
+# Querying with adult
 anchors <- FindTransferAnchors(reference = elmentaite_adult,
                                query = my_dataset,
                                dims = 1:50,
                                normalization.method = 'SCT',
                                reference.reduction = 'pca')
 
-predictions <- TransferData(anchorset = anchors,
-                            refdata = elmentaite_adult$cell_type,
-                            dims = 1:50)
-
-my_dataset <- AddMetaData(my_dataset, metadata = predictions)
-
-# MapQuery method
 my_dataset_2 <- MapQuery(anchorset = anchors,
                        reference = elmentaite_adult,
                        query = my_dataset,
@@ -80,12 +71,12 @@ p_corrected <- ggplot(tmp2, aes(x = cell.type.2, y = predicted.celltype, color =
   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
   scale_colour_gradient(low = 'lightgrey', high = 'darkred')
 
-pdf(paste0(output, 'comparison_annotation_elmentaite2021.pdf'), width = 11, height = 8, paper = 'a4r')
+pdf(paste0(out_path, 'comparison_annotation_elmentaite2021.pdf'), width = 11, height = 8, paper = 'a4r')
 p
 p_corrected
 dev.off()
   
-write.csv(tmp, paste0(output, 'summary_celltype_prediction_Elmentaite.csv'), row.names = F)
+write.csv(tmp, paste0(out_path, 'summary_celltype_prediction_Elmentaite.csv'), row.names = F)
 
 ## Comparing only epithelial cells with Elmentaite ---------------------------------------
 my_dataset <- epithelia

@@ -1,9 +1,5 @@
 # Loading required packages
-library(Seurat)
-library(UCell)
-library(tidyverse)
-library(patchwork)
-library(BiocParallel)
+
 
 ## Function plotMarkers() ------------------------------------------------------
 # This function plots a FeaturePlot and a VlnPlot (optional) for each marker in a provided dataset.
@@ -16,6 +12,10 @@ library(BiocParallel)
 # output: file name to save the plots (saved as .pdf by default)
 
 plotMarkers <- function(data, markers, vln = FALSE, output){
+  
+  require(Seurat)
+  require(tidyverse)
+  require(patchwork)
   
   # Loading and preparing the markers list
   signatures <- read.csv(markers, na.strings = '')
@@ -68,6 +68,11 @@ plotMarkers <- function(data, markers, vln = FALSE, output){
 # reduction: reduction to use in the UCell score calculations. Default = 'umap'
 
 PlotUCell <- function(data, markers, output = getwd(), reduction = 'umap') {
+  
+  require(Seurat)
+  require(UCell)
+  require(tidyverse)
+  require(patchwork)
   
   signatures <- read.csv(markers, na.strings = '')
   

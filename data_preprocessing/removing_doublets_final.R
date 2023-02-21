@@ -51,9 +51,9 @@ saveRDS(all_doublets, paste0(path, 'A_doublets.rds'))
 obj <- LoadH5Seurat(paste0(path, 'All_samples_v3_identified.h5seurat'),
                     assay = 'SCT', reductions = 'umap', graphs = FALSE, plots = FALSE)
 
-A_doublets <- readRDS(paste0(path, 'A_doublets.rds'))
+A_doublets <- readRDS(paste0(out_path, 'A_doublets.rds'))
 A_doublets <- bind_rows(A_doublets)
-F_doublets <- readRDS(paste0(path, 'F_doublets.rds'))
+F_doublets <- readRDS(paste0(out_path, 'F_doublets.rds'))
 F_doublets <- bind_rows(F_doublets)
 
 F_doublets <- F_doublets %>%
@@ -94,6 +94,9 @@ ggplot(doublets_per_cluster, aes(seurat_clusters, pct, label = scales::percent(p
 write.csv(doublets_per_cluster, paste0(path, './doublets_per_cluster_v3.csv'), row.names = F)
 
 ## Removing these doublets from the final dataset and reclustering -------------
+doublets_barcodes <- c(A_doublets, F_doublets)
+saveRDS(doublets_barcodes, paste0(out_path, 'all_intradoublets_barcodes.rds'))
+
 barcodes_to_keep <- barcodes[barcodes %in% c(A_doublets, F_doublets) == FALSE]
 
 obj <- LoadH5Seurat(paste0(path, 'All_samples_v3_identified.h5seurat'))
