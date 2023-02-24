@@ -197,11 +197,56 @@ cell_counts <- epithelia@meta.data %>%
 cell_counts <- replace(cell_counts, is.na(cell_counts), 0)
 write.csv(cell_counts, paste0(out_path, 'epithelial_cells_counts.csv'), row.names = F)
 
+## Reordering enterocytes clusters based on trajectory analysis
+epithelia <- readRDS(paste0(out_path, 'only_epithelial_res07_indentified_v2.rds'))
+
+clusters.ids <- read.csv(paste0(out_path, 'only_epithelial_top20markers_v2_identity.csv'))
+clusters.ids <- clusters.ids %>% select(-markers)
+clusters.ids$cluster <- as.factor(clusters.ids$cluster)
+
+metadata <- epithelia@meta.data
+# Deleting old cell.type.3
+metadata <- select(metadata, -cell.type.3)
+metadata <- left_join(metadata, clusters.ids, by = c('seurat_clusters' = 'cluster'))
+row.names(metadata) <- metadata$barcode
+
+epithelia@meta.data <- metadata
+DimPlot(epithelia, reduction = 'umap', group.by = 'cell.type.3', label= T) + NoLegend()
+
+# Saving
+saveRDS(epithelia, paste0(out_path, 'only_epithelial_res07_indentified_v3.rds'))
+
+# Saving counts for scCODA
+epithelia@meta.data <- epithelia@meta.data %>%
+  mutate(sample = case_when(
+    genotype == '30_219-0607' ~ 'CeD1',
+    genotype == '51_219-1056' ~ 'CeD2',
+    genotype == '13_CeDNN-A0325' ~ 'Ctrl1',
+    genotype == '15_CeDNN-A0326' ~ 'Ctrl2',
+    genotype == '20_CeDNN-A0339' ~ 'CeD3',
+    genotype == '23_CeDNN-A0357' ~ 'Ctrl4',
+    genotype == '24_CeDNN-A0381' ~ 'Ctrl5',
+    genotype == '21_CeDNN-A0340' ~  'CeD4'
+  ), .after = genotype)
+
+cell_counts <- epithelia@meta.data %>%
+  group_by(sample, age, sex, batch, status, cell.type.3) %>%
+  summarise(count = n()) %>%
+  ungroup() %>%
+  pivot_wider(names_from = cell.type.3, values_from = count)
+
+cell_counts <- replace(cell_counts, is.na(cell_counts), 0)
+write.csv(cell_counts, paste0(out_path, 'epithelial_cells_counts_v3.csv'), row.names = F)
+
+## Preparing dataset for PAGA - merging EEC clusters
+epithelia$cell.type.4 <- epithelia$cell.type.3
+epithelia$cell.type.4[epithelia$seurat_clusters %in% c(12, 14, 15, 16, 17, 18, 19)] <- 'EEC'
+
 # Saving SeuratObj as AnnData for scanpy
 library(SeuratDisk)
 
-SaveH5Seurat(epithelia, filename = paste0(out_path, 'epithelia.h5Seurat'))
-Convert(paste0(out_path, 'epithelia.h5Seurat'), dest = 'h5ad')
+SaveH5Seurat(epithelia, filename = paste0(out_path, 'epithelia_v3.h5Seurat'))
+Convert(paste0(out_path, 'epithelia_v3.h5Seurat'), dest = 'h5ad')
 
 ## Subclustering immune cells --------------------------------------------------
 # Get barcodes of immune group
