@@ -110,16 +110,12 @@ library(patchwork)
 library(edgeR)
 library(statmod)
 
-epithelia <- readRDS(paste0(path, 'subclusters/only_epithelial_res07_identified_immuneremoved.rds'))
+epithelia <- readRDS(paste0(out_path, 'only_epithelial_res07_indentified_v2.rds'))
 
-prop <- propeller(epithelia, clusters = epithelia$cell.type.3, sample = epithelia$sample, group = epithelia$status, transform = 'asin')
-
-### other way
 epithelia@meta.data <- epithelia@meta.data %>%
   mutate(sample_full = paste(sample, batch, sex, age, sep = '_'))
 
 props <- getTransformedProps(clusters = epithelia$cell.type.3, sample = epithelia$sample_full, transform = 'logit')
-#props <- getTransformedProps(clusters = epithelia$cell.type.3, sample = epithelia$sample, transform = 'logit')
 
 plotCellTypeMeanVar(props$Counts)
 plotCellTypePropsMeanVar(props$Counts)
@@ -127,7 +123,7 @@ plotCellTypePropsMeanVar(props$Counts)
 names(props)
 props$TransformedProps
 
-group_info <- read_csv(paste0(path2, 'subclusters/epithelial_cells_counts.csv')) %>% select(1:5)
+group_info <- read_csv(paste0(out_path, 'epithelial_cells_counts.csv')) %>% select(1:5)
 condition <- group_info$status
 batch <- group_info$batch
 sex <- group_info$sex
@@ -139,9 +135,9 @@ mycontr <- makeContrasts(conditionCtrl-conditionCeD, levels = design)
 res <- propeller.ttest(props, design, contrasts = mycontr, robust = T, trend = F, sort = T)
 
 # Saving
-write.csv(res, paste0(path, 'propeller_results_complete_model.csv'))
+write.csv(res, paste0(out_path, 'propeller_epithelia_results.csv'))
 
-# Ploting
+## Ploting proportions ---------------------------------------------------------
 summary <- epithelia@meta.data %>% 
   group_by(status, sample, cell.type.3) %>% 
   summarise(count = n()) %>%
@@ -163,8 +159,6 @@ p <- ggplot(summary, aes(x = cell.type.3, y = pct, fill = status, color = status
        y = 'Proportion',
        x = '')
 
-pdf(paste0(path, 'epithelium_cell_proportions.pdf'), width = 11, height = 8, paper = 'a4r')
+pdf(paste0(out_path, 'epithelium_cell_proportions.pdf'), width = 11, height = 8, paper = 'a4r')
 p
 dev.off()
-
-  
