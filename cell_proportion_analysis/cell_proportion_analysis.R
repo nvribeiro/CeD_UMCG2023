@@ -5,99 +5,8 @@ library(SeuratDisk)
 library(patchwork)
 library(pals)
 
-path <- './cell_proportion_analysis/output/'
-path2 <- './data_preprocessing/outputs/'
-
-## Some visualization and inspection
-# Loading data
-metadata <- readRDS('./data_preprocessing/outputs/all/All_obj_v5_final_metadata.rds')
-
-# Calculating percentage of cells
-summary <- metadata %>%
-  group_by(status, cell.type.1, cell.type.2) %>%
-  summarise(count.2 = n()) %>%
-  ungroup() %>%
-  group_by(status, cell.type.1) %>%
-  mutate(count.1 = sum(count.2)) %>%
-  mutate(pct = count.2/count.1) %>%
-  ungroup()
-
-summary1 <- metadata %>% 
-  group_by(status, cell.type.1) %>% 
-  summarise(count = n()) %>%
-  ungroup() %>%
-  group_by(status) %>%
-  mutate(total.cells = sum(count)) %>%
-  mutate(pct = count/total.cells)
-
-summary2 <- metadata %>% 
-  group_by(status, cell.type.2) %>% 
-  summarise(count = n()) %>%
-  ungroup() %>%
-  group_by(status) %>%
-  mutate(total.cells = sum(count)) %>%
-  mutate(pct = count/total.cells)
-
-
-palette <- as.vector(polychrome(24))
-palette2 <- as.vector(tol())
-
-p1 <- ggplot(filter(summary, cell.type.1 != 'Unknown'), aes(x = cell.type.1, y= pct, fill = cell.type.2, label = scales::percent(pct, accuracy = 0.1))) +
-  geom_col(position = 'stack') +
-  geom_text(position = position_stack(vjust = 0.5),
-            size = 4) +
-  scale_fill_manual(values = palette, name = 'Cell type') +
-  theme_classic() +
-  labs(title = 'Distribution of cell types in CeD vs. Controls (%)') +
-  xlab('Cell group') +
-  ylab('%') +
-  facet_wrap(~status)
-
-p2 <- ggplot(summary1, aes(x = status, y = pct, fill = cell.type.1, label = scales::percent(pct, accuracy = 0.1))) +
-  geom_col(position = 'stack') +
-  geom_text(position = position_stack(vjust = 0.5), size = 4) +
-  theme_classic() +
-  scale_fill_discrete(name = 'Cell group') +
-  labs(title = 'Distribution of cell groups in CeD vs. Controls (%)') +
-  xlab('Group') +
-  ylab('%')
-
-pdf(paste0(path, 'cell_composition.pdf'), width = 11, height = 8, paper = 'a4r')
-p2
-p1
-dev.off()
-
-## Checking each sample and batches
-# Adding a more user-friendly name for the samples
-metadata <- metadata %>%
-  mutate(sample = case_when(
-    genotype == '30_219-0607' ~ 'CeD1',
-    genotype == '51_219-1056' ~ 'CeD2',
-    genotype == '13_CeDNN-A0325' ~ 'Ctrl1',
-    genotype == '15_CeDNN-A0326' ~ 'Ctrl2',
-    genotype == '20_CeDNN-A0339' ~ 'CeD3',
-    genotype == '23_CeDNN-A0357' ~ 'Ctrl4',
-    genotype == '24_CeDNN-A0381' ~ 'Ctrl5',
-    genotype == '21_CeDNN-A0340' ~  'CeD4',
-  ))
-
-metadata$batch <- as.factor(metadata$batch)
-metadata$sample <- as.factor(metadata$sample)
-
-p <- ggplot(filter(metadata, cell.type.1 == 'Epithelial'), aes(sample, fill = cell.type.2)) +
-  geom_bar(position = 'fill', color = 'white') +
-  scale_fill_manual(values = palette, name = 'Cell type') +
-  facet_wrap(~status) +
-  theme_classic()
-
-summary_batch <- metadata %>%
-  group_by(sample, batch, cell.type.1, cell.type.2) %>%
-  summarise(count.2 = n()) %>%
-  ungroup() %>%
-  group_by(sample, batch, cell.type.1) %>%
-  mutate(count.1 = sum(count.2)) %>%
-  mutate(pct = count.2/count.1) %>%
-  ungroup()
+in_path <- '/groups/umcg-wijmenga/tmp01/users/umcg-aramirezsanchez/umcg-nribeiro/NR03_scRNAseq/ongoing/outputs/subclustering/'
+out_path <- '/groups/umcg-wijmenga/tmp01/users/umcg-aramirezsanchez/umcg-nribeiro/NR03_scRNAseq/ongoing/outputs/cell_proportion_analysis/'
 
 ## Propeller for epithelial cells -------------------------------------------------------------
 library(speckle)
@@ -110,7 +19,20 @@ library(patchwork)
 library(edgeR)
 library(statmod)
 
-epithelia <- readRDS(paste0(out_path, 'only_epithelial_res07_indentified_v2.rds'))
+epithelia <- readRDS(paste0(in_path, 'only_epithelial_res07_indentified_v3.rds'))
+
+# Adding a more user-friendly name for the samples
+epithelia@meta.data <- epithelia@meta.data %>%
+  mutate(sample = case_when(
+    genotype == '30_219-0607' ~ 'CeD1',
+    genotype == '51_219-1056' ~ 'CeD2',
+    genotype == '13_CeDNN-A0325' ~ 'Ctrl1',
+    genotype == '15_CeDNN-A0326' ~ 'Ctrl2',
+    genotype == '20_CeDNN-A0339' ~ 'CeD3',
+    genotype == '23_CeDNN-A0357' ~ 'Ctrl4',
+    genotype == '24_CeDNN-A0381' ~ 'Ctrl5',
+    genotype == '21_CeDNN-A0340' ~  'CeD4',
+  ))
 
 epithelia@meta.data <- epithelia@meta.data %>%
   mutate(sample_full = paste(sample, batch, sex, age, sep = '_'))
@@ -123,7 +45,7 @@ plotCellTypePropsMeanVar(props$Counts)
 names(props)
 props$TransformedProps
 
-group_info <- read_csv(paste0(out_path, 'epithelial_cells_counts.csv')) %>% select(1:5)
+group_info <- read_csv(paste0(in_path, 'epithelial_cells_counts_v3.csv')) %>% dplyr::select(1:5)
 condition <- group_info$status
 batch <- group_info$batch
 sex <- group_info$sex
@@ -159,6 +81,6 @@ p <- ggplot(summary, aes(x = cell.type.3, y = pct, fill = status, color = status
        y = 'Proportion',
        x = '')
 
-pdf(paste0(out_path, 'epithelium_cell_proportions.pdf'), width = 11, height = 8, paper = 'a4r')
+pdf(paste0(out_path, 'epithelia_cell_proportions.pdf'), width = 11, height = 8, paper = 'a4r')
 p
 dev.off()
