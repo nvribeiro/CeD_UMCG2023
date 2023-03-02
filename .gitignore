@@ -8,5 +8,4 @@ data_preprocessing/outputs/
 subclustering/outputs/
 clusters_refcheck/output/
 cell_proportion_analysis/output/
-cell_proportion_analysis/scCODA_epithelial_cells.ipnyb
 .ipynb_checkpoints
