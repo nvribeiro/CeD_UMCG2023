@@ -245,8 +245,17 @@ epithelia$cell.type.4[epithelia$seurat_clusters %in% c(12, 14, 15, 16, 17, 18, 1
 # Saving SeuratObj as AnnData for scanpy
 library(SeuratDisk)
 
-SaveH5Seurat(epithelia, filename = paste0(out_path, 'epithelia_v3.h5Seurat'))
-Convert(paste0(out_path, 'epithelia_v3.h5Seurat'), dest = 'h5ad')
+DefaultAssay(epithelia) <- 'RNA'
+epithelia <- FindVariableFeatures(epithelia, nfeatures = 3000)
+
+SaveH5Seurat(epithelia, filename = paste0(out_path, 'epithelia_v3.h5Seurat'), overwrite = T)
+Convert(paste0(out_path, 'epithelia_v3.h5Seurat'), dest = 'h5ad', assay = 'RNA', overwrite = T)
+
+##
+epithelia <- readRDS(paste0(out_path, 'only_epithelial_res07_indentified_v3.rds'))
+FeaturePlot(epithelia, features = c('ORC6', 'TOP2A'), label = T)
+FeaturePlot(epithelia, features = c('CDX1', 'CDX2'), label = T)
+
 
 ## Subclustering immune cells --------------------------------------------------
 # Get barcodes of immune group

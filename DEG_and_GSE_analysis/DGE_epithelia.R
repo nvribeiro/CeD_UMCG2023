@@ -61,7 +61,7 @@ epithelia <- NormalizeData(epithelia)
 
 ## Finding DEGs for all clusters all at once -----------------------------------
 clusters_ids <- epithelia@meta.data %>%
-  select(seurat_clusters, cell.type.3) %>%
+  dplyr::select(seurat_clusters, cell.type.3) %>%
   distinct() %>%
   arrange(seurat_clusters)
 
@@ -93,6 +93,8 @@ complete_DEG <- left_join(complete_DEG, ENTREZID, by = join_by('gene' == 'SYMBOL
 
 # Using compareCluster
 complete_DEG <- filter(complete_DEG, p_val_adj < 0.05 & is.na(DE) == FALSE)
+
+write.csv(complete_DEG, paste0(out_path, 'DEG_epithelial_clusters_with_ENTREZID_filtered_p005.csv'))
 
 # Reactome
 GSE.Pathway <- compareCluster(ENTREZID~cluster+DE, fun = 'enrichPathway',
@@ -389,16 +391,30 @@ dev.off()
 write_csv(control_DEG, file = paste0(out_path, 'DEG_TAcells_control.csv'))
 write_csv(ced_DEG, file = paste0(out_path, 'DEG_TAcells_CeD.csv'))
 
+## GSE with msigdb hallmarks -------------------------------------------
+library(msigdbr)
+
+# Getting human hallmark dataset
+h_gene_set <- msigdbr(species = "Homo sapiens", category = "H")
+head(h_gene_set)
+
+msigdbr_t2g <- h_gene_set %>% 
+  dplyr::distinct(gs_name, entrez_gene) %>% 
+  as.data.frame()
+
+# Testing with cluster 1 up
+gse_fun <- function(gene_id = ENTREZID, term = msigdbr_t2g) {
+  enricher(gene = gene_id, TERM2GENE = term, pvalueCutoff = 0.05)
+}
+
+gse <- compareCluster(ENTREZID~cluster+DE, fun = gse_fun, data = complete_DEG)
+
+pdf(paste0(out_path, 'GSEA_hallmarks_all_clusters.pdf'), width = 11, height = 8, paper = 'a4r')
+dotplot(gse, font.size = 7)
+dev.off()
 
 
-
-
-
-
-
-
-
-## Archive
+## Archive -----------
 ## Stem cells 1 - cluster 1 -----------------------------------------------------
 stem1_DEG <- findDEG(epithelia, cluster = 1)
 plotVolcano(stem1_DEG)
