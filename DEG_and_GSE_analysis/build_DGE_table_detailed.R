@@ -54,3 +54,11 @@ deg <- left_join(deg, gene_info, by = join_by('gene' == 'hgnc_symbol'), multiple
 
 # Saving
 write_csv(deg, paste0(out_path, 'DEG_epithelia_with_genedetails.csv'))
+
+## Comparing my genes with table from Pietz 2017 --------------------------
+pietz <- read_csv('../../resources/DEGs_database.csv')
+genes_pietz <- pietz$gene
+
+table(unique(deg$gene) %in% genes_pietz) # I have 22/118 of the genes
+
+deg_pietz <- filter(deg, deg$gene %in% genes_pietz)
