@@ -13,11 +13,13 @@ library(enrichplot)
 findDEG <- function(obj, cluster) {
   
   # Subseting SeuratObj
-  obj <- subset(obj, idents = cluster)
+  obj <- subset(obj, subset = cell.type.3 == cluster)
   Idents(obj) <- "status"
   
   # Finding DEGs
-  obj_DEG <- FindMarkers(obj, ident.1 = 'CeD', ident.2 = 'Ctrl', test.use = 'MAST', logfc.threshold = 0)
+  obj_DEG <- FindMarkers(obj, ident.1 = 'CeD', ident.2 = 'Ctrl', 
+                         test.use = 'MAST', logfc.threshold = 0,
+                         min.pct = 0.25)
   obj_DEG$gene <- rownames(obj_DEG)
   obj_DEG$cluster = cluster
   
@@ -53,37 +55,31 @@ plotVolcano <- function(data, cluster_name) {
 in_path <- '/groups/umcg-wijmenga/tmp01/users/umcg-aramirezsanchez/umcg-nribeiro/NR03_scRNAseq/ongoing/outputs/subclustering/'
 out_path <- '/groups/umcg-wijmenga/tmp01/users/umcg-aramirezsanchez/umcg-nribeiro/NR03_scRNAseq/ongoing/outputs/DEG_and_GSE_analysis/'
 
-epithelia <- readRDS(paste0(in_path, 'only_epithelial_res07_indentified_v3.rds'))
+epithelia <- readRDS(paste0(in_path, 'SeuratObj_epithelia_v4_res09_identified.rds'))
 
 # Setting the object back to RNA and normalizing the counts
 DefaultAssay(epithelia) <- 'RNA'
-epithelia <- NormalizeData(epithelia)
+epithelia <- NormalizeData(epithelia, normalization.method = 'LogNormalize')
 
 ## Finding DEGs for all clusters all at once -----------------------------------
-clusters_ids <- epithelia@meta.data %>%
-  dplyr::select(seurat_clusters, cell.type.3) %>%
-  distinct() %>%
-  arrange(seurat_clusters)
-
-clusters <- as.integer(clusters_ids$seurat_clusters)
-names(clusters) <- clusters_ids$cell.type.3
+clusters <- unique(epithelia$cell.type.3)
 
 complete_DEG <- map_dfr(clusters, ~findDEG(obj = epithelia, cluster = .x))
 complete_DEG$cluster <- as.factor(complete_DEG$cluster)
 
 # Saving
-write_csv(complete_DEG, paste0(out_path, 'DEG_epithelial_clusters.csv'))
+write_csv(complete_DEG, paste0(out_path, 'DEG_epithelial_clusters_v4.csv'))
 
 ## Plotting all volcanos
-plots <- imap(clusters, ~plotVolcano(data = filter(complete_DEG, cluster == .x), cluster_name = .y))
+plots <- imap(clusters, ~plotVolcano(data = filter(complete_DEG, cluster == .x), cluster_name = .x))
 
 # Saving
-pdf(paste0(out_path, 'VolcanoPlots_epithelial_clusters.pdf'), width = 11, height = 8, paper = 'a4r')
-plots
+pdf(paste0(out_path, 'VolcanoPlots_epithelial_clusters_v4.pdf'), width = 11, height = 8, paper = 'a4r')
+print(plots)
 dev.off()
 
 ## Gene set enrichment analysis ------------------------------------------------
-complete_DEG <- read.csv(paste0(out_path, 'DEG_epithelial_clusters.csv'))
+complete_DEG <- read.csv(paste0(out_path, 'DEG_epithelial_clusters_v4.csv'))
 
 # Adding ENTREZ ID
 ENTREZID <- select(org.Hs.eg.db, keys = complete_DEG$gene, 
@@ -94,7 +90,7 @@ complete_DEG <- left_join(complete_DEG, ENTREZID, by = join_by('gene' == 'SYMBOL
 # Using compareCluster
 complete_DEG <- filter(complete_DEG, p_val_adj < 0.05 & is.na(DE) == FALSE)
 
-write.csv(complete_DEG, paste0(out_path, 'DEG_epithelial_clusters_with_ENTREZID_filtered_p005.csv'))
+write.csv(complete_DEG, paste0(out_path, 'DEG_epithelial_clusters_with_ENTREZID_filtered_p005_v4.csv'))
 
 # Reactome
 GSE.Pathway <- compareCluster(ENTREZID~cluster+DE, fun = 'enrichPathway',
@@ -409,8 +405,8 @@ gse_fun <- function(gene_id = ENTREZID, term = msigdbr_t2g) {
 
 gse <- compareCluster(ENTREZID~cluster+DE, fun = gse_fun, data = complete_DEG)
 
-pdf(paste0(out_path, 'GSEA_hallmarks_all_clusters.pdf'), width = 11, height = 8, paper = 'a4r')
-dotplot(gse, font.size = 7)
+pdf(paste0(out_path, 'GSEA_hallmarks_all_clusters_v4.pdf'), width = 11, height = 8, paper = 'a4r')
+dotplot(gse, font.size = 8) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 dev.off()
 
 
